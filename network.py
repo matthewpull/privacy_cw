@@ -64,18 +64,21 @@ class Network():
 
   def send_share(self, share, src_gate, dest_party):
     # send share for gate to destination party
+    # print(f"    Sending {share} from {self.publisher.party_no} to {dest_party} (gate {src_gate})")
     self.publisher.send(dest=dest_party, msg=(src_gate,share))
 
   def receive_share(self, src_party, src_gate):
     # return share from (party:gate), keep receiving shares until 
     # match, save any shares received from other (party:gate)'s
     if self.shares[src_party][src_gate] is not None:
+      # print(f"    Receiving {self.shares[src_party][src_gate]} from {src_party} to {self.publisher.party_no} (gate {src_gate})")
       return self.shares[src_party][src_gate]
 
     while True:   # could use recursion instead
       msg_gate, msg_share = self.subscriber.receive(src_party)
       self.shares[src_party][msg_gate] = msg_share
       if self.shares[src_party][src_gate] is not None:
+        # print(f"    Receiving {self.shares[src_party][src_gate]} from {src_party} to {self.publisher.party_no} (gate {src_gate})")
         return self.shares[src_party][src_gate]
 
 
