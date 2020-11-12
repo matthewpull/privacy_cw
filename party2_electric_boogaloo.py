@@ -1,37 +1,60 @@
-import random
-
-from circuit2_electric_boogaloo import N_PARTIES, PRIME, DEGREE, GATES, INP, ADD, MUL
 from modprime import randint, add, mul
+from circuit2_electric_boogaloo import GATES, N_PARTIES, INP, ADD, MUL, PRIME, DEGREE
 
-OUTPUT_GATE = list(GATES.values())[-1][1]
+OUTPUT_GATE = len(GATES) + 1
 
 N_INPUTS = sum([1 for (gate_type, _, _) in GATES.values() if gate_type == INP])
 
+# Degree to delta value cache
+delta_values_cache = {}
+
 def bgw_protocol(party_no, private_value, network):
-    # Phase 1: Shamir Secret Sharing
-    coef = [private_value]
-    for _ in range(DEGREE):
-        coef.append(random.randint(0, PRIME - 1))
+    initial_shares = bgw_step_one(party_no, network, private_value) 
     
-    outputs = []
+    circuit_result = bgw_step_two(party_no, network, initial_shares)
+
+    result = bgw_step_three(party_no, network, circuit_result)
+    print(f"Party {party_no} output {result}")
+
+
+def bgw_step_one(party_no, network, private_value):
+    # Generate random polynomial
+    local_coeff = [private_value] + [randint() for _ in range(DEGREE)]
+    
+    # Split private inputs
     if (party_no <= N_INPUTS):
         for dest_party in range(1, N_PARTIES + 1):
-            share = calc_poly(dest_party, coef)
-            outputs.append(share)
+            share = calc_poly(dest_party, local_coeff)
             network.send_share(share, party_no, dest_party)
     
-    print(f"Party: {party_no}, Shares: {outputs}, Coef: {coef}")
-
-    # Phase 2: Receive shares & Evaluate Add / Mul Gates
+    # Distribute shares
     shares = [0] # 0th elem is padding
     for remote_party in range(1, N_INPUTS + 1):
         shares.append(network.receive_share(remote_party, remote_party))
     print(f"Party: {party_no} shares: {shares}")
 
-    # Evaluate result of gates using shares
-    result = evaluate_gates(shares, network, party_no)
+    return shares
 
-    # Broadcast outputs
+
+def bgw_step_two(party_no, network, shares):
+    # Evaluate circuit
+    results = {}
+    for key, (gate_type, output_gate, order) in GATES.items():
+        if not output_gate in results:
+            results[output_gate] = {1: None, 2: None}
+        if gate_type == INP:
+            results[output_gate][order] = shares[key]
+        elif gate_type == ADD:
+            results[output_gate][order] = add(results[key][1], results[key][2])
+        elif gate_type == MUL:
+            results[output_gate][order] = multiply(network, results[key][1], results[key][2], key)
+        else:
+            print(f"Error. Unable to evaluate {gate_type} in key {key}")
+    return results[OUTPUT_GATE][1]
+
+
+def bgw_step_three(party_no, network, result):
+    # Broadcast output
     for dest_party in range(1, N_PARTIES + 1):
         network.send_share(result, OUTPUT_GATE, dest_party)
     
@@ -40,91 +63,48 @@ def bgw_protocol(party_no, private_value, network):
     for remote_party in range(1, N_PARTIES + 1):
         outputs.append(network.receive_share(remote_party, OUTPUT_GATE))
     
-    # Phase 3: Use Legrange Interpolation to combine outputs
-    secret = recombination(outputs, party_no)
-    print(f"Party {party_no} output {secret}")
+    # Combine outputs
+    delta_values = calc_delta_values(DEGREE + 1)
+    return sum([outputs[i] * delta_values[i] for i in range(1, len(delta_values))]) % PRIME
 
-def recombination(values, party_no):
+
+def calc_delta_values(size):
+    if size in delta_values_cache:
+        return delta_values_cache[size]
+
     delta_values = [0]
-    for i in range(1, N_PARTIES + 1):
+    for i in range(1, size + 1):
         acc = 1
-        for j in range(1, DEGREE + 2):
-            if i == j:
-                continue
-            acc *= j / (j-i)
+        for j in [x for x in range(1, size + 1) if i != x]:
+            acc *= j / (j - i)
         delta_values.append(acc)
-    acc = 0
-    for i in range(1, DEGREE + 2):
-        acc += values[i] * delta_values[i]
-    acc %= PRIME
-    # print(f"REC Party {party_no} acc: {acc} delta_values: {delta_values} values: {values}")
-    return acc
-
-def calc_poly(x, coef):
-    output = 0
-    for i in range(len(coef)):
-        output += coef[i] * (x ** i)
-    return output % PRIME
-
-def evaluate_gates(shares, network, party_no):
-    results = {}
-    for key, value in GATES.items():
-        gate_type, connect_to, order = value
-        if connect_to not in results:
-            results[connect_to] = {1: None, 2: None}
-
-        if gate_type == INP:
-            results[connect_to][order] = shares[key]
-        elif gate_type == ADD:
-            results[connect_to][order] = add(results[key][1], results[key][2])
-            # print(f"Adding {results[key][1]} + {results[key][2]} to gate {connect_to}")
-        elif gate_type == MUL:
-            results[connect_to][order] = multiply(results[key][1], results[key][2], key, network, party_no)
-        else:
-            print(f"Error. Unable to evaluate {gate_type} in key {key}")
-    return results[OUTPUT_GATE][1]
-
-def split_share(coef, src_gate, network):
-    for _ in range(DEGREE):
-        coef.append(random.randint(0, PRIME - 1))
     
-    outputs = []
-    for dest_party in range(1, N_PARTIES + 1):
-        share = calc_poly(dest_party, coef)
-        outputs.append(share)
-        network.send_share(share, src_gate, dest_party)
-    
-    # print(f"Party: {src_gate}, Shares: {outputs}, Coef: {coef}")
+    delta_values_cache[size] = delta_values
+    return delta_values
 
-def multiply(value_one, value_two, src_gate, network, party_no):
+
+def calc_poly(x, coeff):
+    return sum([coeff[i] * (x ** i) for i in range(len(coeff))]) % PRIME
+
+
+def multiply(network, a, b, src_gate):
     # Compute locally compute d
-    mult_secret = mul(value_one, value_two)
+    private_value = mul(a, b)
 
     # Party produces a poly and broadcast
-    mult_coef = [mult_secret]
-    split_share(mult_coef, src_gate, network)
+    local_coeff = [private_value] + [randint() for _ in range(DEGREE)]
+    for dest_party in range(1, N_PARTIES + 1):
+        share = calc_poly(dest_party, local_coeff)
+        network.send_share(share, src_gate, dest_party)
     
-    # print(f"Gate: MUL, Party: {party_no}, Value one: {value_one}, Value two: {value_two}, Shares: {outputs}, Coef: {mult_coef}, Mult secret: {mult_secret}")
+    # print(f"Gate: MUL, Value one: {value_one}, Value two: {value_two}, Shares: {outputs}, Coef: {mult_coef}, Mult secret: {mult_secret}")
 
     # Receive shares from others
     shares = [0] # 0th elem is padding
     for remote_party in range(1, N_PARTIES + 1):
         shares.append(network.receive_share(remote_party, src_gate))
 
-    # print(f"Party {party_no} received shares: {shares}")
+    # print(f"Received shares: {shares}")
+    delta_values = calc_delta_values(2*DEGREE + 1)
 
-    delta_values = [0]
-    for i in range(1, 2*DEGREE + 2):
-        acc = 1
-        for j in range(1, 2*DEGREE + 2):
-            if i == j:
-                continue
-            acc *= j / (j-i)
-        delta_values.append(acc)
-    acc = 0
-    for i in range(1, 2*DEGREE + 2):
-        acc += shares[i] * delta_values[i]
-    acc %= PRIME
-    # print(f"MUL Party {party_no} acc: {acc} delta_values: {delta_values} values: {shares}")
-    return acc
-    
+    return sum([shares[i] * delta_values[i] for i in range(1, len(delta_values))]) % PRIME

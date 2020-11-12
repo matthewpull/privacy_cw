@@ -2,7 +2,7 @@
 # naranker dulay, dept of computing, imperial college, october 2020
 
 # Circuit below to evalute
-CIRCUIT = 1
+CIRCUIT = 2
 
 # Gate types
 INP, ADD, MUL = (0,1,2)

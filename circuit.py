@@ -2,7 +2,7 @@
 # naranker dulay, dept of computing, imperial college, october 2020
 
 # Circuit below to evalute
-CIRCUIT = 4
+CIRCUIT = 3
 
 # Gate types
 ZER, INP, ADD, MUL = (0,1,2,3)
