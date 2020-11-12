@@ -6,7 +6,7 @@
 import functools # reduce
 import random    # randint
 
-from circuit import PRIME
+from circuit2_electric_boogaloo import PRIME
 
 # ---------------------------------------------------------------------------
 

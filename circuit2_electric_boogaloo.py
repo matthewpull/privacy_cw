@@ -2,10 +2,10 @@
 # naranker dulay, dept of computing, imperial college, october 2020
 
 # Circuit below to evalute
-CIRCUIT = 4
+CIRCUIT = 1
 
 # Gate types
-ZER, INP, ADD, MUL = (0,1,2,3)
+INP, ADD, MUL = (0,1,2)
 
 # Define MPC Function as an addition/multiplication circuit. INPut gates 
 # precede ADD/MUL gates. ADD/MUL gates are defined in evaluation order. 
@@ -107,10 +107,9 @@ elif CIRCUIT == 4:	# add your circuit(s) here
     return (x[1] * x[2]) % PRIME
 
   GATES = {
-    1:  (INP, 4, 1),
-    2:  (INP, 4, 2),
-    3:  (ZER, 0, 0),
-    4:  (MUL, 5, 1),  # (5,1) is circuit output wire
+    1:  (INP, 3, 1),
+    2:  (INP, 3, 2),
+    3:  (MUL, 4, 1),  # (4,1) is circuit output wire
   }
 
 # ___________________________________________________________________________

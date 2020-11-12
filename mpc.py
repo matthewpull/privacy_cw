@@ -6,10 +6,10 @@ import subprocess # Popen
 import sys        # argv
 import time       # sleep
 
-from circuit import ALL_PARTIES, CIRCUIT, N_PARTIES, PRIVATE_VALUES
+from circuit2_electric_boogaloo import ALL_PARTIES, CIRCUIT, N_PARTIES, PRIVATE_VALUES
 from config  import LOCAL, MAX_TIME, PKILL_PATTERN, REPEATABLE_RANDOM_NUMBERS
 from log     import init_logging
-from party   import bgw_protocol
+from party2_electric_boogaloo   import bgw_protocol
 from network import Network
 
 # from local import simulate_parties

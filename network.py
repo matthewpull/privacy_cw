@@ -5,7 +5,7 @@ import collections # deque    # could use a list
 import time   # sleep
 import zmq    # Context
 
-from circuit import N_GATES, ALL_PARTIES
+from circuit2_electric_boogaloo import N_GATES, ALL_PARTIES
 from config  import LOCAL_PORT, SYNC_DELAY
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,6 @@ class Network():
     # return share from (party:gate), keep receiving shares until 
     # match, save any shares received from other (party:gate)'s
     if self.shares[src_party][src_gate] is not None:
-      # print(f"    Receiving {self.shares[src_party][src_gate]} from {src_party} to {self.publisher.party_no} (gate {src_gate})")
       return self.shares[src_party][src_gate]
 
     while True:   # could use recursion instead
