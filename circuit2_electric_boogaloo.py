@@ -2,7 +2,7 @@
 # naranker dulay, dept of computing, imperial college, october 2020
 
 # Circuit below to evalute
-CIRCUIT = 2
+CIRCUIT = 5
 
 # Gate types
 INP, ADD, MUL = (0,1,2)
@@ -78,19 +78,31 @@ elif CIRCUIT == 3:	# add your circuit(s) here
   # polynomial prime - further primes at bottom of file
   PRIME  = 101
   # degree of polynominal - T in slides
-  DEGREE = 1
+  DEGREE = 3
 
-  PRIVATE_VALUES = {1:20, 2:41, 3:7}
+  _A = 3
+  _B = 4
+  _C = 5
+
+  PRIVATE_VALUES = {1:_A, 2:_A, 3:_B, 4:_B, 5:_C, 6:_C, 7:-1}
 
   def function(x):	# function being evaluated by parties
-    return (x[1] + x[2] + x[3]) % PRIME
+    return (x[1]*x[2] + x[3]*x[4] + x[5]*x[6]*x[7]) % PRIME
 
   GATES = {
-    1:  (INP, 4, 1),
-    2:  (INP, 4, 2),
-    3:  (INP, 5, 1),
-    4:  (ADD, 5, 2),
-    5:  (ADD, 6, 1),  # (6,1) is circuit output wire
+    1:  (INP, 8, 1), # A
+    2:  (INP, 8, 2), # A
+    3:  (INP, 9, 1), # B
+    4:  (INP, 9, 2), # B
+    5:  (INP, 10, 1), # C
+    6:  (INP, 10, 2), # C
+    7:  (INP, 11, 1), # -1
+    8:  (MUL, 12, 1), # A^2
+    9:  (MUL, 12, 2), # B^2
+    10: (MUL, 11, 2), # C^2
+    11: (MUL, 13, 1), # -C^2
+    12: (ADD, 13, 2), # A^2 + B^2 = d
+    13: (ADD, 14, 1), # d - C^2
   }
 
 # ___________________________________________________________________________
@@ -114,6 +126,35 @@ elif CIRCUIT == 4:	# add your circuit(s) here
 
 # ___________________________________________________________________________
 
+elif CIRCUIT == 5:	# add your circuit(s) here
+  # ___________________________________________________________________________
+  # polynomial prime - further primes at bottom of file
+  PRIME  = 1009
+  # degree of polynominal - T in slides
+  DEGREE = 1
+
+  VALUE_A = (1, 0, 1)
+  PRIVATE_VALUES = {1:1, 2:1, 3:1, 4:100, 5:10}
+
+  def function(x):	# function being evaluated by parties
+    return (x[1]*x[4] + x[2]*x[5] + x[3]) % PRIME
+
+  GATES = {
+    1:  (INP, 6, 1),
+    2:  (INP, 7, 1),
+    3:  (INP, 9, 1),
+    4:  (INP, 6, 2),
+    5:  (INP, 7, 2),
+
+    6:  (MUL, 8, 1), # 100 * 1
+    7:  (MUL, 8, 2), # 10 * 0 
+
+    8:  (ADD, 9, 2), # 100 + 0
+    9:  (ADD, 10, 1),  # 100 + 1
+  }
+
+# ___________________________________________________________________________ 
+
 # true function result - used to check result from MPC circuit
 FUNCTION_RESULT = function(PRIVATE_VALUES)
 
@@ -134,5 +175,3 @@ assert 2*DEGREE < N_PARTIES, "2T < N failed :-("
 # PRIME = 1_000_003 
 # PRIME = 1_000_000_007
 # PRIME = 35742549198872617291353508656626642567  # Large Bell prime
-
-

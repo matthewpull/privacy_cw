@@ -5,8 +5,7 @@ OUTPUT_GATE = len(GATES) + 1
 
 N_INPUTS = sum([1 for (gate_type, _, _) in GATES.values() if gate_type == INP])
 
-# Degree to delta value cache
-delta_values_cache = {}
+recombination_vector_cache = {}
 
 def bgw_protocol(party_no, private_value, network):
     initial_shares = bgw_step_one(party_no, network, private_value) 
@@ -14,9 +13,10 @@ def bgw_protocol(party_no, private_value, network):
     circuit_result = bgw_step_two(party_no, network, initial_shares)
 
     result = bgw_step_three(party_no, network, circuit_result)
-    print(f"Party {party_no} output {result}")
+    print(f"Party {party_no} - Result {result}")
 
 
+# Step One - Distribute private inputs & split shares
 def bgw_step_one(party_no, network, private_value):
     # Generate random polynomial
     local_coeff = [private_value] + [randint() for _ in range(DEGREE)]
@@ -28,16 +28,18 @@ def bgw_step_one(party_no, network, private_value):
             network.send_share(share, party_no, dest_party)
     
     # Distribute shares
-    shares = [0] # 0th elem is padding
-    for remote_party in range(1, N_INPUTS + 1):
-        shares.append(network.receive_share(remote_party, remote_party))
+    shares = {
+        remote_party: network.receive_share(remote_party, remote_party) 
+        for remote_party in range(1, N_INPUTS + 1)
+    }
+
     print(f"Party: {party_no} shares: {shares}")
 
     return shares
 
 
+# Step Two - Evaluate circuit
 def bgw_step_two(party_no, network, shares):
-    # Evaluate circuit
     results = {}
     for key, (gate_type, output_gate, order) in GATES.items():
         if not output_gate in results:
@@ -53,42 +55,50 @@ def bgw_step_two(party_no, network, shares):
     return results[OUTPUT_GATE][1]
 
 
+# Step Three - Broadcast outputs & combine outputs
 def bgw_step_three(party_no, network, result):
     # Broadcast output
     for dest_party in range(1, N_PARTIES + 1):
         network.send_share(result, OUTPUT_GATE, dest_party)
     
     # Receive outputs
-    outputs = [0]
-    for remote_party in range(1, N_PARTIES + 1):
-        outputs.append(network.receive_share(remote_party, OUTPUT_GATE))
-    
+    outputs = {
+        remote_party: network.receive_share(remote_party, OUTPUT_GATE)
+        for remote_party in range(1, N_PARTIES + 1)
+    }
+
     # Combine outputs
-    delta_values = calc_delta_values(DEGREE + 1)
-    return sum([outputs[i] * delta_values[i] for i in range(1, len(delta_values))]) % PRIME
+    recombination_vector = calc_recombination_vector(DEGREE + 1)
+    result = sum([
+        outputs[i] * recombination_vector[i]
+        for i in range(1, len(recombination_vector) + 1)
+    ])
+    print(f"Party {party_no} cache {recombination_vector_cache}")
+    return result % PRIME
 
+# Calculate recombination vector and cache it
+def calc_recombination_vector(size):
+    if size in recombination_vector_cache:
+        return recombination_vector_cache[size]
 
-def calc_delta_values(size):
-    if size in delta_values_cache:
-        return delta_values_cache[size]
-
-    delta_values = [0]
+    recombination_vector = {}
     for i in range(1, size + 1):
         acc = 1
         for j in [x for x in range(1, size + 1) if i != x]:
             acc *= j / (j - i)
-        delta_values.append(acc)
+        recombination_vector[i] = int(acc)
     
-    delta_values_cache[size] = delta_values
-    return delta_values
+    recombination_vector_cache[size] = recombination_vector
+    return recombination_vector
 
-
+# Calculate Poly(x)
 def calc_poly(x, coeff):
     return sum([coeff[i] * (x ** i) for i in range(len(coeff))]) % PRIME
 
 
 def multiply(network, a, b, src_gate):
     # Compute locally compute d
+    print(f"mul {a}, {b}")
     private_value = mul(a, b)
 
     # Party produces a poly and broadcast
@@ -97,14 +107,15 @@ def multiply(network, a, b, src_gate):
         share = calc_poly(dest_party, local_coeff)
         network.send_share(share, src_gate, dest_party)
     
-    # print(f"Gate: MUL, Value one: {value_one}, Value two: {value_two}, Shares: {outputs}, Coef: {mult_coef}, Mult secret: {mult_secret}")
-
     # Receive shares from others
-    shares = [0] # 0th elem is padding
-    for remote_party in range(1, N_PARTIES + 1):
-        shares.append(network.receive_share(remote_party, src_gate))
+    shares = {
+        remote_party: network.receive_share(remote_party, src_gate) 
+        for remote_party in range(1, N_PARTIES + 1)
+    }
 
-    # print(f"Received shares: {shares}")
-    delta_values = calc_delta_values(2*DEGREE + 1)
+    recombination_vector = calc_recombination_vector(2*DEGREE + 1)
 
-    return sum([shares[i] * delta_values[i] for i in range(1, len(delta_values))]) % PRIME
+    result = sum([
+        shares[i] * recombination_vector[i] for i in range(1, len(recombination_vector) + 1)
+    ])
+    return result

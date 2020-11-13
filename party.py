@@ -3,44 +3,31 @@ import random
 from circuit import N_PARTIES, PRIME, DEGREE, GATES, ADD, INP, MUL, ZER
 from modprime import add, mul
 
-PARTY_NO = None
-
 def bgw_protocol(party_no, private_value, network):
-    global PARTY_NO
-    PARTY_NO = party_no
     # Phase 1: Shamir Secret Sharing
-
-    coefficients = [private_value]
-    for _ in range(DEGREE):
-        coefficients.append(random.randint(0, PRIME - 1))
-    
-    outputs = []
-    for dest_party in range(1, N_PARTIES + 1):
-        share = get_poly_value(coefficients, dest_party)
-        outputs.append(share)
-        network.send_share(share, party_no, dest_party)
+    split_share(private_value, party_no, network)
     
     # Phase 2: Receive shares & Evaluate Add / Mul Gates
     shares = [0] # 0th elem is padding
-    for remote_party in range(1, N_PARTIES + 1):
-        shares.append(network.receive_share(remote_party, remote_party))
+    for i in range(1, N_PARTIES + 1):
+        shares.append(network.receive_share(i, i))
 
     # Evaluate result of gates using shares
     output_gate_no = list(GATES.values())[-1][1]
-    result = evaluate_gates(shares, network, party_no, output_gate_no)
+    result = evaluate_gates(shares, network, output_gate_no)
 
     # Broadcast outputs
-    for dest_party in range(1, N_PARTIES + 1):
-        network.send_share(result, output_gate_no, dest_party)
+    for i in range(1, N_PARTIES + 1):
+        network.send_share(result, output_gate_no, i)
     
     # Receive outputs
     outputs = [0]
-    for remote_party in range(1, N_PARTIES + 1):
-        outputs.append(network.receive_share(remote_party, output_gate_no))
+    for i in range(1, N_PARTIES + 1):
+        outputs.append(network.receive_share(i, output_gate_no))
     
     # Phase 3: Use Legrange Interpolation to combine outputs
     secret = recombination(outputs, DEGREE, party_no)
-    print(f"Party {party_no} output {secret}")
+    print("Output: " + secret + " computed at party " + party_no)
 
 def recombination(values, degree, party_no = None):
     deltas = [0]
@@ -50,20 +37,21 @@ def recombination(values, degree, party_no = None):
             if i == j:
                 continue
             count = count * j / (j-i)
+        # Convert value to integer to prevent floating point issue
+        count = int(count)
         deltas.append(count)
     count = 0
     for i in range(1, degree + 2):
-        count = count + (values[i] * deltas[i])
-    count = count % PRIME
-    return count
+        count += (values[i] * deltas[i])
+    return count % PRIME
 
 def get_poly_value(coefficients, x):
     output = 0
     for i in range(len(coefficients)):
-        output = output + coefficients[i] * (x ** i)
+        output += coefficients[i] * (x ** i)
     return output % PRIME
 
-def evaluate_gates(shares, network, party_no, output_gate_no):
+def evaluate_gates(shares, network, output_gate_no):
     outputs = [0]
 
     # First loop to set up output stucture
@@ -72,36 +60,32 @@ def evaluate_gates(shares, network, party_no, output_gate_no):
     
     # Second loop to do calculate values
     for i in GATES:
-        gate_type, connect_to, index = GATES[i]            
+        type, connect_to, index = GATES[i]            
 
-        if gate_type == ZER:
+        if type == ZER:
             pass
-        elif gate_type == INP:
+        elif type == INP:
             outputs[connect_to][index] = shares[i]
-        elif gate_type == ADD:
+        elif type == ADD:
             outputs[connect_to][index] = add(outputs[i][1], outputs[i][2])
-        elif gate_type == MUL:
-            outputs[connect_to][index] = multiply(outputs[i][1], outputs[i][2], i, network, party_no)
+        elif type == MUL:
+            # Party produces a poly and broadcast
+            split_share(mul(outputs[i][1], outputs[i][2]), i, network)
+            # Receive shares from others
+            shares = [0] # 0th elem is padding
+            for j in range(1, N_PARTIES + 1):
+                shares.append(network.receive_share(j, i))
+            outputs[connect_to][index] = recombination(shares, DEGREE * 2)
+
     return outputs[output_gate_no][1]
 
 def split_share(mult_secret, src_gate, network):
     coefficients = [mult_secret]
     for _ in range(DEGREE):
-        coefficients.append(random.randint(0, PRIME - 1))
+        coefficients.append(random.randint(1, PRIME - 1))
     
     for dest_party in range(1, N_PARTIES + 1):
         share = get_poly_value(coefficients, dest_party)
         network.send_share(share, src_gate, dest_party)
-
-def multiply(value_one, value_two, src_gate, network, party_no):
-    # Compute locally compute d
-    # Party produces a poly and broadcast
-    split_share(mul(value_one, value_two), src_gate, network)
     
-    # Receive shares from others
-    shares = [0] # 0th elem is padding
-    for remote_party in range(1, N_PARTIES + 1):
-        shares.append(network.receive_share(remote_party, src_gate))
-
-    return recombination(shares, DEGREE * 2)
     
