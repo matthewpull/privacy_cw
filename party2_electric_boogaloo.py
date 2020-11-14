@@ -33,7 +33,7 @@ def bgw_step_one(party_no, network, private_value):
         for remote_party in range(1, N_INPUTS + 1)
     }
 
-    print(f"Party: {party_no} shares: {shares}")
+    # print(f"Party: {party_no} shares: {shares}")
 
     return shares
 
@@ -73,7 +73,7 @@ def bgw_step_three(party_no, network, result):
         outputs[i] * recombination_vector[i]
         for i in range(1, len(recombination_vector) + 1)
     ])
-    print(f"Party {party_no} cache {recombination_vector_cache}")
+    # print(f"Party {party_no} cache {recombination_vector_cache}")
     return result % PRIME
 
 # Calculate recombination vector and cache it
@@ -98,7 +98,6 @@ def calc_poly(x, coeff):
 
 def multiply(network, a, b, src_gate):
     # Compute locally compute d
-    print(f"mul {a}, {b}")
     private_value = mul(a, b)
 
     # Party produces a poly and broadcast

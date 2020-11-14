@@ -126,33 +126,114 @@ elif CIRCUIT == 4:	# add your circuit(s) here
 
 # ___________________________________________________________________________
 
-elif CIRCUIT == 5:	# add your circuit(s) here
+elif CIRCUIT == 5:	# Binary to decimal converter
   # ___________________________________________________________________________
   # polynomial prime - further primes at bottom of file
-  PRIME  = 1009
+  PRIME  = 100_003
   # degree of polynominal - T in slides
-  DEGREE = 1
+  DEGREE = 2
 
-  VALUE_A = (1, 0, 1)
-  PRIVATE_VALUES = {1:1, 2:1, 3:1, 4:100, 5:10}
+  # Binary number to be converted, as an array of digits (order unchanged)
+  # Note - for large inputs, ensure MAX_TIME in config.py is increased
+  INPUT = (1, 1, 0, 0, 1, 1, 0, 1)  # 205
+  # INPUT = (1, 0, 1, 1, 0)  # 22
+  # INPUT = (0, 1, 1, 0)  # 6
+  # INPUT = [1 for _ in range(16)]  # 2^16 - 1 = 65535
+
+  # Set up private values - input digits in order, then powers of two needed
+  # for calculation
+  PRIVATE_VALUES = {i+1: INPUT[i] for i in range(len(INPUT))}
+  for i in range(1, len(INPUT)):
+    PRIVATE_VALUES[i + len(INPUT)] = 2 ** (len(INPUT) - i)
 
   def function(x):	# function being evaluated by parties
-    return (x[1]*x[4] + x[2]*x[5] + x[3]) % PRIME
+    num_digits = len(x) // 2 + 1
+    acc = x[num_digits]
+    for i in range(1, num_digits):
+      acc += x[i] * x[i + num_digits]
+    return acc % PRIME
+  
+  # GATES_1_DIGIT = {
+  #   1:  (INP, 2, 1),  # (2,1) is circuit output wire
+  # }
 
-  GATES = {
-    1:  (INP, 6, 1),
-    2:  (INP, 7, 1),
-    3:  (INP, 9, 1),
-    4:  (INP, 6, 2),
-    5:  (INP, 7, 2),
+  # GATES_2_DIGIT = {
+  #   1:  (INP, 4, 1),
+  #   2:  (INP, 5, 1),
+  #   3:  (INP, 4, 2),
+  #
+  #   4:  (MUL, 5, 1),  # 4 * x[0]
+  #
+  #   5:  (ADD, 6, 1),  # (6,1) is circuit output wire
+  # }
 
-    6:  (MUL, 8, 1), # 100 * 1
-    7:  (MUL, 8, 2), # 10 * 0 
+  # GATES_3_DIGIT = {
+  #   1:  (INP, 6, 1),
+  #   2:  (INP, 7, 1),
+  #   3:  (INP, 9, 2),
+  #   4:  (INP, 6, 2),
+  #   5:  (INP, 7, 2),
+  #
+  #   6:  (MUL, 8, 1),  # 4 * x[0]
+  #   7:  (MUL, 8, 2),  # 2 * x[1]
+  #
+  #   8:  (ADD, 9, 1),
+  #   9:  (ADD, 10, 1),  # (10,1) is circuit output wire
+  # }
 
-    8:  (ADD, 9, 2), # 100 + 0
-    9:  (ADD, 10, 1),  # 100 + 1
-  }
+  # GATES_4_DIGIT = {
+  #   1:  (INP, 8, 1),
+  #   2:  (INP, 9, 1),
+  #   3:  (INP, 10, 1),
+  #   4:  (INP, 13, 2),
+  #   5:  (INP, 8, 2),
+  #   6:  (INP, 9, 2),
+  #   7:  (INP, 10, 2),
+  #
+  #   8:  (MUL, 11, 1),  # 8 * x[0]
+  #   9:  (MUL, 11, 2),  # 4 * x[1]
+  #   10: (MUL, 12, 2),  # 2 * x[2]
+  #
+  #   11:  (ADD, 12, 1),  # 100 + 0
+  #   12:  (ADD, 13, 1),  # 100 + 1
+  #   13:  (ADD, 14, 1),  # (14,1) is circuit output wire
+  # }
 
+  GATES = {}
+
+  def calc_gates():
+    num_input = len(INPUT)
+    num_pv = len(PRIVATE_VALUES)
+
+    # Input gates
+    for i in range(1, num_input):
+      GATES[i] = (INP, num_pv + i, 1)
+    GATES[num_input] = (
+      INP,
+      2 * num_pv if num_input == 1 else 2 * num_pv - 1,
+      1 if num_input == 1 else 2
+    )
+    for i in range(1, num_input):
+      GATES[i + num_input] = (INP, i + num_pv, 2)
+    
+    # Multiply gates
+    for i in range(1, num_input):
+      GATES[i + num_pv] = (
+        MUL,
+        i + num_pv + num_input - 1 if i == 1 else i + num_pv + num_input - 2,
+        1 if i == 1 else 2
+      )
+    
+    # Add gates
+    for i in range(1, num_input):
+      GATES[i + num_pv + num_input - 1] = (
+        ADD,
+        i + num_pv + num_input,
+        1
+      )
+  
+  calc_gates()
+  
 # ___________________________________________________________________________ 
 
 # true function result - used to check result from MPC circuit
