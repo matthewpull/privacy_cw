@@ -78,39 +78,31 @@ elif CIRCUIT == 3:	# add your circuit(s) here
   # polynomial prime - further primes at bottom of file
   PRIME  = 101
   # degree of polynominal - T in slides
-  DEGREE = 1
+  DEGREE = 3
 
-  PRIVATE_VALUES = {1:20, 2:41, 3:7}
+  _A = 3
+  _B = 4
+  _C = 5
 
-  def function(x):	# function being evaluated by parties
-    return (x[1] + x[2] + x[3]) % PRIME
-
-  GATES = {
-    1:  (INP, 4, 1),
-    2:  (INP, 4, 2),
-    3:  (INP, 5, 1),
-    4:  (ADD, 5, 2),
-    5:  (ADD, 6, 1),  # (6,1) is circuit output wire
-  }
-
-# ___________________________________________________________________________
-elif CIRCUIT == 4:	# add your circuit(s) here
-  # ___________________________________________________________________________
-  # polynomial prime - further primes at bottom of file
-  PRIME  = 101
-  # degree of polynominal - T in slides
-  DEGREE = 1
-
-  PRIVATE_VALUES = {1:43, 2:89, 3:0}
+  PRIVATE_VALUES = {1:_A, 2:_A, 3:_B, 4:_B, 5:_C, 6:_C, 7:-1}
 
   def function(x):	# function being evaluated by parties
-    return (x[1] * x[2]) % PRIME
+    return (x[1]*x[2] + x[3]*x[4] + x[5]*x[6]*x[7]) % PRIME
 
   GATES = {
-    1:  (INP, 4, 1),
-    2:  (INP, 4, 2),
-    3:  (ZER, 0, 0),
-    4:  (MUL, 5, 1),  # (5,1) is circuit output wire
+    1:  (INP, 8, 1), # A
+    2:  (INP, 8, 2), # A
+    3:  (INP, 9, 1), # B
+    4:  (INP, 9, 2), # B
+    5:  (INP, 10, 1), # C
+    6:  (INP, 10, 2), # C
+    7:  (INP, 11, 1), # -1
+    8:  (MUL, 12, 1), # A^2
+    9:  (MUL, 12, 2), # B^2
+    10: (MUL, 11, 2), # C^2
+    11: (MUL, 13, 1), # -C^2
+    12: (ADD, 13, 2), # A^2 + B^2 = d
+    13: (ADD, 14, 1), # d - C^2
   }
 
 # ___________________________________________________________________________
