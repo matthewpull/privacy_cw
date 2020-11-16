@@ -1,4 +1,4 @@
-from modprime import randint, add, mul
+from modprime import randint, add, mul, div
 from circuit2_electric_boogaloo import GATES, N_PARTIES, INP, ADD, MUL, PRIME, DEGREE
 
 OUTPUT_GATE = len(GATES) + 1
@@ -85,7 +85,7 @@ def calc_recombination_vector(size):
     for i in range(1, size + 1):
         acc = 1
         for j in [x for x in range(1, size + 1) if i != x]:
-            acc *= j / (j - i)
+            acc = mul(acc, div(j, j-i))
         recombination_vector[i] = int(acc)
     
     recombination_vector_cache[size] = recombination_vector

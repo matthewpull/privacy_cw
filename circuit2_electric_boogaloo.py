@@ -75,17 +75,17 @@ elif CIRCUIT == 2:	# factorial tree for 2^n parties
 
 elif CIRCUIT == 3:	# Binary to decimal converter
   # ___________________________________________________________________________
-  # polynomial prime - further primes at bottom of file
+
   PRIME  = 100_003
-  # degree of polynominal - T in slides
-  DEGREE = 2
+
+  DEGREE = 7
 
   # Binary number to be converted, as an array of digits (order unchanged)
   # Note - for large inputs, ensure MAX_TIME in config.py is increased
   INPUT = (1, 1, 0, 0, 1, 1, 0, 1)  # 205
   # INPUT = (1, 0, 1, 1, 0)  # 22
   # INPUT = (0, 1, 1, 0)  # 6
-  # INPUT = [1 for _ in range(16)]  # 2^16 - 1 = 65535
+  # INPUT = [1 for _ in range(32)]  # 2^16 - 1 = 65535
 
   # Set up private values - input digits in order, then powers of two needed
   # for calculation
@@ -100,6 +100,8 @@ elif CIRCUIT == 3:	# Binary to decimal converter
       acc += x[i] * x[i + num_digits]
     return acc % PRIME
   
+  # Test vectors for generate_gates()
+
   # GATES_1_DIGIT = {
   #   1:  (INP, 2, 1),  # (2,1) is circuit output wire
   # }
@@ -141,14 +143,14 @@ elif CIRCUIT == 3:	# Binary to decimal converter
   #   9:  (MUL, 11, 2),  # 4 * x[1]
   #   10: (MUL, 12, 2),  # 2 * x[2]
   #
-  #   11:  (ADD, 12, 1),  # 100 + 0
-  #   12:  (ADD, 13, 1),  # 100 + 1
+  #   11:  (ADD, 12, 1),
+  #   12:  (ADD, 13, 1),
   #   13:  (ADD, 14, 1),  # (14,1) is circuit output wire
   # }
 
   GATES = {}
 
-  def calc_gates():
+  def generate_gates():
     num_input = len(INPUT)
     num_pv = len(PRIVATE_VALUES)
 
@@ -179,9 +181,9 @@ elif CIRCUIT == 3:	# Binary to decimal converter
         1
       )
   
-  calc_gates()
+  generate_gates()
   
-# ___________________________________________________________________________ 
+# _____________________________________________________________________________
 
 # true function result - used to check result from MPC circuit
 FUNCTION_RESULT = function(PRIVATE_VALUES)
