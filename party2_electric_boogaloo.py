@@ -84,7 +84,7 @@ def bgw_step_three(network, result):
         outputs[i] * recombination_vector[i]
         for i in range(1, len(recombination_vector) + 1)
     ]) % PRIME
-    
+
     debug(f"Final result {result} using rec vector {recombination_vector}")
     return result
 
