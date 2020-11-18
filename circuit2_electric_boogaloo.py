@@ -2,7 +2,7 @@
 # naranker dulay, dept of computing, imperial college, october 2020
 
 # Circuit below to evalute
-CIRCUIT = 3
+CIRCUIT = 1
 
 # Gate types
 INP, ADD, MUL = (0,1,2)
@@ -78,14 +78,14 @@ elif CIRCUIT == 3:	# Binary to decimal converter
 
   PRIME  = 100_003
 
-  DEGREE = 7
+  DEGREE = 3
 
   # Binary number to be converted, as an array of digits (order unchanged)
   # Note - for large inputs, ensure MAX_TIME in config.py is increased
   INPUT = (1, 1, 0, 0, 1, 1, 0, 1)  # 205
   # INPUT = (1, 0, 1, 1, 0)  # 22
   # INPUT = (0, 1, 1, 0)  # 6
-  # INPUT = [1 for _ in range(32)]  # 2^16 - 1 = 65535
+  # INPUT = [1 for _ in range(16)]  # 2^16 - 1 = 65535
 
   # Set up private values - input digits in order, then powers of two needed
   # for calculation
@@ -175,11 +175,7 @@ elif CIRCUIT == 3:	# Binary to decimal converter
     
     # Add gates
     for i in range(1, num_input):
-      GATES[i + num_pv + num_input - 1] = (
-        ADD,
-        i + num_pv + num_input,
-        1
-      )
+      GATES[i + num_pv + num_input - 1] = (ADD, i + num_pv + num_input, 1)
   
   generate_gates()
   
